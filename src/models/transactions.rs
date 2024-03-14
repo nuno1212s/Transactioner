@@ -54,19 +54,20 @@ pub struct Dispute {
 }
 
 impl Transaction {
+
     /// Function to initialize the transaction
     pub fn builder() -> TransactionBuilder<NoVal, NoVal, NoVal> {
         Default::default()
     }
 
-    pub fn is_disputed(&self) -> Result<bool, TransactionError> {
-        match &self.tx_type {
-            TransactionType::Deposit { dispute, .. } | TransactionType::Withdrawal { dispute, .. } => {
-                Ok(dispute.is_some())
+    pub fn amount(&self) -> Result<MoneyType, TransactionError> {
+        match self.tx_type {
+            TransactionType::Deposit { amount, .. } | TransactionType::Withdrawal { amount, .. } => {
+
+                Ok(amount.clone())
+
             }
-            _ => {
-                Err(TransactionDisputeError::TransactionNotDisputable.into())
-            }
+            _ => Err(TransactionError::IllegalAmountCheck)
         }
     }
 
@@ -80,7 +81,6 @@ impl Transaction {
 
             return match &mut self.tx_type {
                 TransactionType::Deposit { dispute, .. } | TransactionType::Withdrawal { dispute, .. } => {
-
                     if dispute.is_some() {
                         return Err(TransactionDisputeError::TransactionAlreadyDisputed.into());
                     }
@@ -160,7 +160,7 @@ pub enum TransactionResolveDisputeError {
     #[error("The transaction is not resolving the current one (Current {0:?}, Disputed {1:?})")]
     TransactionNotResolvingThisOne(TransactionID, TransactionID),
     #[error("This dispute has already been resolved")]
-    DisputeAlreadyResolved
+    DisputeAlreadyResolved,
 }
 
 #[derive(Error, Debug)]
@@ -168,7 +168,9 @@ pub enum TransactionError {
     #[error("Dispute error {0:?}")]
     DisputeError(#[from] TransactionDisputeError),
     #[error("Resolve dispute error {0:?}")]
-    ResolveDisputeError(#[from] TransactionResolveDisputeError)
+    ResolveDisputeError(#[from] TransactionResolveDisputeError),
+    #[error("Cannot check the amount of this transaction")]
+    IllegalAmountCheck
 }
 
 
@@ -252,7 +254,6 @@ mod transaction_tests {
 
     #[test]
     pub fn test_transaction_dispute() {
-
         let mut transaction = Transaction::builder()
             .with_tx_id(1)
             .with_tx_type(TransactionType::Deposit {
@@ -348,5 +349,4 @@ mod transaction_tests {
 
         assert!(transaction.settle_dispute(valid_settlement).is_ok());
     }
-
 }
