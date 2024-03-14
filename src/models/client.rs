@@ -130,10 +130,7 @@ pub enum WithdrawFundsError {
 }
 
 #[derive(Error, Debug)]
-pub enum DisputeFundsError {
-    #[error("Failed to dispute transaction, not enough funds available to dispute")]
-    DisputedFundsNotAvailable(MoneyType, MoneyType),
-}
+pub enum DisputeFundsError {}
 
 #[derive(Error, Debug)]
 pub enum ChargeBackError {
@@ -301,11 +298,8 @@ mod client_tests {
         assert_eq!(client.available(), 0);
         assert_eq!(client.held(), 0);
         assert_eq!(client.total(), 0);
-        match client.account_status() {
-            ClientAccountStatus::Active => {
-                panic!("Account should be frozen")
-            }
-            _ => {}
+        if let ClientAccountStatus::Frozen = client.account_status() {
+            panic!("Account should be frozen")
         }
     }
 }

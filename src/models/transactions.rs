@@ -63,7 +63,7 @@ impl Transaction {
     pub fn amount(&self) -> Result<MoneyType, TransactionError> {
         match self.tx_type {
             TransactionType::Deposit { amount, .. }
-            | TransactionType::Withdrawal { amount, .. } => Ok(amount.clone()),
+            | TransactionType::Withdrawal { amount, .. } => Ok(amount),
             _ => Err(TransactionError::IllegalAmountCheck),
         }
     }
@@ -127,7 +127,7 @@ impl Transaction {
 
                         let dispute_ref = dispute.as_mut().unwrap();
 
-                        if let Some(_) = dispute_ref.resolution {
+                        if dispute_ref.resolution.is_some() {
                             return Err(
                                 TransactionResolveDisputeError::DisputeAlreadyResolved.into()
                             );

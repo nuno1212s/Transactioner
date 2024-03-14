@@ -44,7 +44,7 @@ where
             TransactionType::Deposit { amount, .. } => {
                 let mut client_guard = tx_client.lock().await;
 
-                client_guard.deposit(amount.clone())?;
+                client_guard.deposit(*amount)?;
 
                 // We only want to directly store the transactions which are
                 // Entities in their own right.
@@ -55,7 +55,7 @@ where
             TransactionType::Withdrawal { amount, .. } => {
                 let mut client_guard = tx_client.lock().await;
 
-                client_guard.withdraw(amount.clone())?;
+                client_guard.withdraw(*amount)?;
 
                 // We only want to directly store the transactions which are
                 // Entities in their own right.
@@ -83,10 +83,10 @@ where
 
                         match tx_guard.tx_type() {
                             TransactionType::Deposit { amount, .. } => {
-                                client_guard.dispute_deposited_funds(amount.clone())?;
+                                client_guard.dispute_deposited_funds(*amount)?;
                             }
                             TransactionType::Withdrawal { amount, .. } => {
-                                client_guard.dispute_withdrawn_funds(amount.clone())?;
+                                client_guard.dispute_withdrawn_funds(*amount)?;
                             }
                             _ => unreachable!("Transaction type is not valid"),
                         }
