@@ -36,11 +36,11 @@ fn initialize_service(client_repo: impl TClientRepository, transaction_repo: imp
 fn initialize_tx_receiver() -> impl TTransactionStreamProvider {
     let args: Vec<String> = std::env::args().collect();
 
-    if args.len() < 1 {
+    if args.len() < 2 {
         panic!("No arguments provided");
     }
 
-    let csv_file = args.get(0).expect("No file provided");
+    let csv_file = args.get(1).expect("No file provided");
 
     let path = PathBuf::from(csv_file);
 
@@ -62,7 +62,7 @@ async fn main() {
 
     tx_receiver.subscribe_to_tx_stream().await.for_each(|tx| async {
         if let Err(err) = transaction_service.process_transaction(tx).await {
-            eprintln!("Error processing transaction: {:?}", err);
+            eprintln!("Error processing transaction: {}", err);
         }
     }).await;
 
