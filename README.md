@@ -11,6 +11,8 @@ Test Driven Design to verify the correctness of certain invariants that must be 
 
 # Correctness
 
+All described cases are handled by the system.
+
 Utilized the type-state builder pattern to ensure that models can never be created while missing required fields at the type (compile) level.
 
 Wrote unit tests to verify invariants on each of the various models and service. We also utilize the enum system to ensure that we can never have invalid states (like amounts in disputes, etc.).
