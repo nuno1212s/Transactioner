@@ -18,7 +18,7 @@ pub struct Client {
     available: MoneyType,
     #[get_copy = "pub"]
     held: MoneyType,
-    #[get]
+    #[get = "pub"]
     account_status: ClientAccountStatus,
 }
 

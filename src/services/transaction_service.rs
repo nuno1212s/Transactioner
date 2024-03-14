@@ -123,7 +123,7 @@ impl<CR, TR> TTransactionService for TransactionService<CR, TR>
 }
 
 impl<CR, TR> TransactionService<CR, TR> where CR: TClientRepository {
-    fn new(client_repo: CR, transaction_repo: TR) -> Self {
+    pub(crate) fn new(client_repo: CR, transaction_repo: TR) -> Self {
         Self {
             client_repository: client_repo,
             transaction_repository: transaction_repo,

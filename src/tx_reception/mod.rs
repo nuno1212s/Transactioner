@@ -1,15 +1,14 @@
 use std::fs::File;
-use std::intrinsics::powf64;
 use std::io::{BufReader, Read};
 use std::path::PathBuf;
 
 use futures::stream::BoxStream;
 use futures::StreamExt;
+use crate::FLOATING_POINT_ACC;
 
 use crate::models::{ClientID, MoneyType, TransactionID};
 use crate::models::transactions::{Transaction, TransactionType};
 
-const FLOATING_POINT_ACC : u32 = 4;
 
 /// Transaction stream provider.
 /// This should return a stream with all transactions that we want to process.
@@ -58,7 +57,7 @@ impl<R> TTransactionStreamProvider for CSVTransactionProvider<R>
 
                 // Get the 4 decimal digit precision in a single integer, so we
                 // Get no funny business with the floating point arithmetic.
-                let amount = (amount_float * (10.0.powi(FLOATING_POINT_ACC))) as MoneyType;
+                let amount = (amount_float * (10.0f64.powi(FLOATING_POINT_ACC))) as MoneyType;
 
                 let client_id: ClientID = csv_record.get(1).unwrap().parse().unwrap();
 
