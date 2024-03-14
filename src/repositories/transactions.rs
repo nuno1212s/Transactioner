@@ -1,4 +1,6 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
+use futures::lock::Mutex;
+use mockall::automock;
 
 use crate::models::TransactionID;
 use crate::models::transactions::Transaction;
@@ -12,8 +14,8 @@ pub type StoredTX = Arc<Mutex<Transaction>>;
 /// At the moment, the only way I can think of to correctly support offsite repositories
 /// is to make all modifications run by this repository, which would mean we must have
 /// all of the transaction functions "mirrored" here
+#[automock]
 pub trait TTransactionRepository: Send + Sync {
-
     /// Find a tx by a given ID
     async fn find_tx_by_id(&self, tx_id: TransactionID) -> Option<StoredTX>;
 
@@ -25,5 +27,4 @@ pub trait TTransactionRepository: Send + Sync {
     ///
     /// Store a transaction that is not in the repository into the repository
     async fn store_tx(&self, tx: Transaction) -> StoredTX;
-
 }

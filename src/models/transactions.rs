@@ -46,8 +46,9 @@ pub enum TransactionType {
 /// being attached to the original transaction.
 /// This way we can successfully handle wrongful disputes or resolutions by just discarding
 /// them and we better represent the expected behaviour in the model
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Getters)]
 pub struct Dispute {
+    #[get = "pub"]
     dispute_transaction: Transaction,
 
     resolution: Option<Transaction>,
@@ -288,7 +289,7 @@ mod transaction_tests {
             })
             .with_client_id(2).build();
 
-        let mut fake_dispute = Transaction::builder()
+        let fake_dispute = Transaction::builder()
             //WRONG ID
             .with_tx_id(2)
             .with_tx_type(TransactionType::Dispute)
@@ -297,7 +298,7 @@ mod transaction_tests {
         assert!(transaction.dispute(fake_dispute.clone()).is_err());
         assert!(transaction.settle_dispute(fake_dispute).is_err());
 
-        let mut fake_dispute = Transaction::builder()
+        let fake_dispute = Transaction::builder()
             .with_tx_id(1)
             // WRONG TYPE
             .with_tx_type(TransactionType::Resolve)
@@ -306,7 +307,7 @@ mod transaction_tests {
         assert!(transaction.dispute(fake_dispute.clone()).is_err());
         assert!(transaction.settle_dispute(fake_dispute).is_err());
 
-        let mut fake_dispute = Transaction::builder()
+        let fake_dispute = Transaction::builder()
             .with_tx_id(1)
             // WRONG TYPE
             .with_tx_type(TransactionType::Chargeback)
@@ -334,7 +335,7 @@ mod transaction_tests {
         assert!(transaction.dispute(valid_dispute.clone()).is_ok());
         assert!(transaction.dispute(valid_dispute).is_err());
 
-        let mut invalid_settlement = Transaction::builder()
+        let invalid_settlement = Transaction::builder()
             // WRONG ID
             .with_tx_id(2)
             .with_tx_type(TransactionType::Resolve)

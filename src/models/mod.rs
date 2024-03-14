@@ -18,7 +18,7 @@ pub type TransactionID = u32;
 /// with 64 bits which can lead to non precise accounts.
 /// Instead, we multiply the float by the precision we want and then
 /// use the long version in every
-pub type MoneyType = u64;
+pub type MoneyType = i64;
 
 /// No value type for the type state builders,
 /// indicates that the corresponding field has not yet been filled

@@ -1,10 +1,12 @@
 use std::error::Error;
+
 use thiserror::Error;
-use crate::models::client::{Client, ClientOperationError};
+
 use crate::models::{ClientID, TransactionID};
+use crate::models::client::{Client, ClientOperationError};
 use crate::models::transactions::{Transaction, TransactionError, TransactionType};
 use crate::repositories::clients::{StoredClient, TClientRepository};
-use crate::repositories::transactions::{StoredTX, TTransactionRepository};
+use crate::repositories::transactions::TTransactionRepository;
 
 /// The transaction processing service.
 /// Meant to process individual transactions taking into account a state of the system.
@@ -36,7 +38,7 @@ impl<CR, TR> TTransactionService for TransactionService<CR, TR>
 
         let tx_processing_result = match transaction.tx_type() {
             TransactionType::Deposit { amount, .. } => {
-                let mut client_guard = tx_client.lock().unwrap();
+                let mut client_guard = tx_client.lock().await;
 
                 client_guard.deposit(amount.clone())?;
 
@@ -47,7 +49,7 @@ impl<CR, TR> TTransactionService for TransactionService<CR, TR>
                 Ok(())
             }
             TransactionType::Withdrawal { amount, .. } => {
-                let mut client_guard = tx_client.lock().unwrap();
+                let mut client_guard = tx_client.lock().await;
 
                 client_guard.withdraw(amount.clone())?;
 
@@ -63,11 +65,11 @@ impl<CR, TR> TTransactionService for TransactionService<CR, TR>
                         return Err(TransactionProcessingError::DisputedTransactionDoesNotExist(transaction.transaction_id()));
                     }
                     Some(disputed_tx) => {
-                        let mut tx_guard = disputed_tx.lock().unwrap();
+                        let mut tx_guard = disputed_tx.lock().await;
 
                         tx_guard.dispute(transaction)?;
 
-                        let mut client_guard = tx_client.lock().unwrap();
+                        let mut client_guard = tx_client.lock().await;
 
                         match tx_guard.tx_type() {
                             TransactionType::Deposit { amount, .. } => {
@@ -89,11 +91,11 @@ impl<CR, TR> TTransactionService for TransactionService<CR, TR>
                         return Err(TransactionProcessingError::SettledDisputedTransactionDoesNotExist(transaction.transaction_id()));
                     }
                     Some(disputed_tx) => {
-                        let mut tx_guard = disputed_tx.lock().unwrap();
+                        let mut tx_guard = disputed_tx.lock().await;
 
-                        tx_guard.settle_dispute(transaction)?;
+                        tx_guard.settle_dispute(transaction.clone())?;
 
-                        let mut tx_client = tx_client.lock().unwrap();
+                        let mut tx_client = tx_client.lock().await;
 
                         match transaction.tx_type() {
                             TransactionType::Resolve => {
@@ -121,6 +123,14 @@ impl<CR, TR> TTransactionService for TransactionService<CR, TR>
 }
 
 impl<CR, TR> TransactionService<CR, TR> where CR: TClientRepository {
+    fn new(client_repo: CR, transaction_repo: TR) -> Self {
+        Self {
+            client_repository: client_repo,
+            transaction_repository: transaction_repo,
+        }
+    }
+
+    /// Initialize the empty client
     async fn initialize_empty_client(&self, client_id: ClientID) -> StoredClient {
         let client = Client::builder().with_client_id(client_id).build();
 
@@ -128,6 +138,7 @@ impl<CR, TR> TransactionService<CR, TR> where CR: TClientRepository {
     }
 }
 
+/// The processing errors for the transaction service
 #[derive(Error, Debug)]
 pub enum TransactionProcessingError {
     #[error("Client error {0:?}")]
@@ -142,5 +153,57 @@ pub enum TransactionProcessingError {
 
 #[cfg(test)]
 mod service_tests {
+    use std::sync::{Arc};
+    use futures::lock::Mutex;
 
+    use mockall::predicate::eq;
+
+    use crate::models::client::Client;
+    use crate::models::transactions::{Transaction, TransactionType};
+    use crate::repositories::clients::MockTClientRepository;
+    use crate::repositories::transactions::MockTTransactionRepository;
+    use crate::services::transaction_service::{TransactionProcessingError, TransactionService, TTransactionService};
+
+    #[tokio::test]
+    async fn test_deposit_transaction_processing() -> Result<(), TransactionProcessingError> {
+        let mut cli_repo = MockTClientRepository::new();
+        let mut tx_repo = MockTTransactionRepository::new();
+
+        let client = {
+            let client = Arc::new(Mutex::new(
+                Client::builder().with_client_id(1).build()));
+
+            cli_repo.expect_find_client_by_id()
+                .with(eq(1))
+                .return_const(Some(client.clone()));
+
+            cli_repo.expect_save_client().once().return_const(());
+
+            tx_repo.expect_store_tx()
+                .times(1)
+                .returning(|tx| Arc::new(Mutex::new(tx)));
+
+            client
+        };
+
+        let tx_service = TransactionService::new(cli_repo, tx_repo);
+
+        let test_tx = Transaction::builder()
+            .with_client_id(1)
+            .with_tx_type(TransactionType::Deposit {
+                amount: 1000,
+                dispute: None,
+            })
+            .with_tx_id(1)
+            .build();
+
+        tx_service.process_transaction(test_tx).await?;
+
+        let client_guard = client.lock().await;
+
+        assert_eq!(client_guard.available(), 1000);
+        assert_eq!(client_guard.held(), 0);
+
+        Ok(())
+    }
 }

@@ -1,4 +1,6 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
+use futures::lock::Mutex;
+use mockall::automock;
 use crate::models::client::Client;
 use crate::models::ClientID;
 
@@ -6,6 +8,7 @@ pub type StoredClient = Arc<Mutex<Client>>;
 
 /// The client repository trait, meant to represent the storage of the client
 /// models.
+#[automock]
 pub trait TClientRepository: Send + Sync {
 
     async fn find_client_by_id(&self, client_id: ClientID) -> Option<StoredClient>;
