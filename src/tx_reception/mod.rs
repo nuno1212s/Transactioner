@@ -49,6 +49,7 @@ impl<R> TTransactionStreamProvider for CSVTransactionProvider<R>
                 .from_reader(self.file);
 
             for record in csv_reader.records() {
+
                 let csv_record = record.unwrap();
 
                 let tx_builder = Transaction::builder();

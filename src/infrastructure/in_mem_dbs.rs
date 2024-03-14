@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use futures::lock::Mutex;
+use futures::{stream, StreamExt};
 use futures::stream::BoxStream;
 
 use crate::models::{ClientID, TransactionID};
@@ -31,7 +32,7 @@ impl TTransactionRepository for TransactionInMemRepository {
         guard.get(&tx_id).cloned()
     }
 
-    async fn save_tx(&self, tx: StoredTX) {
+    async fn save_tx(&self, _tx: StoredTX) {
         // Atm, since this is only in memory, we don't actually
         // perform any changes.
     }
@@ -54,7 +55,11 @@ impl TTransactionRepository for TransactionInMemRepository {
 
 impl TClientRepository for ClientInMemRepository {
     async fn find_all_clients(&self) -> BoxStream<'static, StoredClient> {
-        todo!()
+        let client_guard = self.stored_clients.lock().await;
+
+        let stored_clients = client_guard.values().cloned().collect::<Vec<StoredClient>>();
+
+        stream::iter(stored_clients).boxed()
     }
 
     async fn find_client_by_id(&self, client_id: ClientID) -> Option<StoredClient> {
@@ -63,7 +68,7 @@ impl TClientRepository for ClientInMemRepository {
         client_guard.get(&client_id).cloned()
     }
 
-    async fn save_client(&self, client: StoredClient) {
+    async fn save_client(&self, _client: StoredClient) {
         // Atm, since this is only in memory, we don't actually need
         // To save anything to the repository
     }
