@@ -1,23 +1,25 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+
 use futures::stream::BoxStream;
 use futures::StreamExt;
+
 use crate::infrastructure::in_mem_dbs::{ClientInMemRepository, TransactionInMemRepository};
-use crate::models::{ClientID, TransactionID};
 use crate::models::client::Client;
 use crate::models::transactions::Transaction;
+use crate::models::{ClientID, TransactionID};
 use crate::repositories::clients::{StoredClient, TClientRepository};
 use crate::repositories::transactions::{StoredTX, TTransactionRepository};
-use crate::services::transaction_service::{TransactionService, TTransactionService};
-use crate::state_exporter::IStateExporter;
+use crate::services::transaction_service::{TTransactionService, TransactionService};
+use crate::state_exporter::TClientStateExporter;
 use crate::tx_reception::{CSVTransactionProvider, TTransactionStreamProvider};
 
+mod infrastructure;
 mod models;
 mod repositories;
 mod services;
-mod infrastructure;
-mod tx_reception;
 mod state_exporter;
+mod tx_reception;
 
 pub(crate) const FLOATING_POINT_ACC: i32 = 4;
 
@@ -29,7 +31,10 @@ fn initialize_transaction_repo() -> impl TTransactionRepository {
     TransactionInMemRepository::default()
 }
 
-fn initialize_service(client_repo: impl TClientRepository, transaction_repo: impl TTransactionRepository) -> impl TTransactionService {
+fn initialize_service(
+    client_repo: impl TClientRepository,
+    transaction_repo: impl TTransactionRepository,
+) -> impl TTransactionService {
     TransactionService::new(client_repo, transaction_repo)
 }
 
@@ -47,8 +52,8 @@ fn initialize_tx_receiver() -> impl TTransactionStreamProvider {
     CSVTransactionProvider::from(path)
 }
 
-fn initialize_state_exporter() -> impl IStateExporter {
-    state_exporter::StateExporter
+fn initialize_state_exporter() -> impl TClientStateExporter {
+    state_exporter::ClientExporter
 }
 
 #[tokio::main]
@@ -60,17 +65,24 @@ async fn main() {
 
     let transaction_service = initialize_service(client_repo.clone(), transaction_repo);
 
-    tx_receiver.subscribe_to_tx_stream().await.for_each(|tx| async {
-        if let Err(err) = transaction_service.process_transaction(tx).await {
-            eprintln!("Error processing transaction: {}", err);
-        }
-    }).await;
+    tx_receiver
+        .subscribe_to_tx_stream()
+        .await
+        .for_each(|tx| async {
+            if let Err(err) = transaction_service.process_transaction(tx).await {
+                eprintln!("Error processing transaction: {}", err);
+            }
+        })
+        .await;
 
     let state_exporter = initialize_state_exporter();
 
     let state = client_repo.find_all_clients().await;
 
-    state_exporter.export_state(state).await.expect("Failed to export state");
+    state_exporter
+        .export_state(state)
+        .await
+        .expect("Failed to export state");
 }
 
 pub struct ShareableTransactionRepository<TR> {
@@ -97,7 +109,10 @@ impl<TR> Clone for ShareableTransactionRepository<TR> {
     }
 }
 
-impl<TR> TTransactionRepository for ShareableTransactionRepository<TR> where TR: TTransactionRepository {
+impl<TR> TTransactionRepository for ShareableTransactionRepository<TR>
+where
+    TR: TTransactionRepository,
+{
     async fn find_tx_by_id(&self, tx_id: TransactionID) -> Option<StoredTX> {
         self.repo.find_tx_by_id(tx_id).await
     }
@@ -127,7 +142,10 @@ impl<CR> Clone for ShareableClientRepository<CR> {
     }
 }
 
-impl<CR> TClientRepository for ShareableClientRepository<CR> where CR: TClientRepository {
+impl<CR> TClientRepository for ShareableClientRepository<CR>
+where
+    CR: TClientRepository,
+{
     async fn find_all_clients(&self) -> BoxStream<'static, StoredClient> {
         self.repo.find_all_clients().await
     }

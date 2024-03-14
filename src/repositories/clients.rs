@@ -1,17 +1,16 @@
-use std::sync::{Arc};
+use crate::models::client::Client;
+use crate::models::ClientID;
 use futures::lock::Mutex;
 use futures::stream::BoxStream;
 use mockall::automock;
-use crate::models::client::Client;
-use crate::models::ClientID;
+use std::sync::Arc;
 
 pub type StoredClient = Arc<Mutex<Client>>;
 
 /// The client repository trait, meant to represent the storage of the client
 /// models.
 #[automock]
-pub trait TClientRepository: Send + Sync  {
-
+pub trait TClientRepository: Send + Sync {
     /// Find all of the clients stored in this repository
     async fn find_all_clients(&self) -> BoxStream<'static, StoredClient>;
 
@@ -25,5 +24,4 @@ pub trait TClientRepository: Send + Sync  {
 
     /// Register a client that does not yet exist in the repository
     async fn store_client(&self, client: Client) -> StoredClient;
-
 }

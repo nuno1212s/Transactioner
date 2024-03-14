@@ -1,9 +1,9 @@
-use std::sync::{Arc};
 use futures::lock::Mutex;
 use mockall::automock;
+use std::sync::Arc;
 
-use crate::models::TransactionID;
 use crate::models::transactions::Transaction;
+use crate::models::TransactionID;
 
 pub type StoredTX = Arc<Mutex<Transaction>>;
 

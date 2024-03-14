@@ -1,5 +1,6 @@
 use getset::{CopyGetters, Getters};
 use thiserror::Error;
+
 use crate::models::{ClientID, MoneyType, NoVal};
 
 /// The current status of the account
@@ -57,7 +58,10 @@ impl Client {
 
     /// When we are disputing a deposit transaction, we must remove the available funds
     /// and move them to the held category
-    pub fn dispute_deposited_funds(&mut self, amount: MoneyType) -> Result<(), ClientOperationError> {
+    pub fn dispute_deposited_funds(
+        &mut self,
+        amount: MoneyType,
+    ) -> Result<(), ClientOperationError> {
         if let ClientAccountStatus::Frozen = self.account_status {
             return Err(ClientOperationError::AccountFrozen);
         }
@@ -71,7 +75,10 @@ impl Client {
 
     /// When disputing withdrawn funds, we do not remove the available funds from the account
     /// Since that would lead to "double" spending
-    pub fn dispute_withdrawn_funds(&mut self, amount: MoneyType) -> Result<(), ClientOperationError> {
+    pub fn dispute_withdrawn_funds(
+        &mut self,
+        amount: MoneyType,
+    ) -> Result<(), ClientOperationError> {
         if let ClientAccountStatus::Frozen = self.account_status {
             return Err(ClientOperationError::AccountFrozen);
         }
@@ -119,25 +126,25 @@ pub enum DepositFundsError {}
 #[derive(Error, Debug)]
 pub enum WithdrawFundsError {
     #[error("The account does not have enough funds ({0:?} while trying to withdraw {1:?})")]
-    NotEnoughFunds(MoneyType, MoneyType)
+    NotEnoughFunds(MoneyType, MoneyType),
 }
 
 #[derive(Error, Debug)]
 pub enum DisputeFundsError {
     #[error("Failed to dispute transaction, not enough funds available to dispute")]
-    DisputedFundsNotAvailable(MoneyType, MoneyType)
+    DisputedFundsNotAvailable(MoneyType, MoneyType),
 }
 
 #[derive(Error, Debug)]
 pub enum ChargeBackError {
     #[error("Attempting to charge back a larger amount than what is held. Held value: {0:?} charging back {1:?}")]
-    NotEnoughHeldFunds(MoneyType, MoneyType)
+    NotEnoughHeldFunds(MoneyType, MoneyType),
 }
 
 #[derive(Error, Debug)]
 pub enum ResolveError {
     #[error("Attempting to resolve funds that are larger than the amount of funds that we are holding. Held value {0:?}, resolving {1:?}")]
-    NotEnoughHeldFunds(MoneyType, MoneyType)
+    NotEnoughHeldFunds(MoneyType, MoneyType),
 }
 
 /// A wrapper for all client errors, so they can be more easily propagated
@@ -229,16 +236,12 @@ mod client_tests {
 
     #[test]
     pub fn test_client_init() {
-        let client = Client::builder()
-            .with_client_id(1)
-            .build();
+        let client = Client::builder().with_client_id(1).build();
     }
 
     #[test]
     pub fn test_negative_withdrawal() {
-        let mut client = Client::builder()
-            .with_client_id(1)
-            .build();
+        let mut client = Client::builder().with_client_id(1).build();
 
         assert!(client.withdraw(1).is_err())
     }
@@ -258,9 +261,7 @@ mod client_tests {
 
     #[test]
     pub fn test_overflow_held() {
-        let mut client = Client::builder()
-            .with_client_id(1)
-            .build();
+        let mut client = Client::builder().with_client_id(1).build();
 
         assert!(client.resolve_funds(100).is_err());
         assert!(client.chargeback_funds(100).is_err());
@@ -268,9 +269,7 @@ mod client_tests {
 
     #[test]
     pub fn test_resolved_dispute() {
-        let mut client = Client::builder()
-            .with_client_id(1)
-            .build();
+        let mut client = Client::builder().with_client_id(1).build();
 
         client.deposit(100).unwrap();
 
@@ -288,9 +287,7 @@ mod client_tests {
 
     #[test]
     pub fn test_charged_back_dispute() {
-        let mut client = Client::builder()
-            .with_client_id(1)
-            .build();
+        let mut client = Client::builder().with_client_id(1).build();
 
         client.deposit(100).unwrap();
 

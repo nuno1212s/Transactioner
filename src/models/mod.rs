@@ -1,5 +1,5 @@
-pub mod transactions;
 pub mod client;
+pub mod transactions;
 
 /// General type declarations, so when we want to change them, we can just change them in one spot,
 /// instead of having to deal with changing it everywhere.

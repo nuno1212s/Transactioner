@@ -1,7 +1,7 @@
 use getset::{CopyGetters, Getters};
 use thiserror::Error;
-use crate::models::{ClientID, MoneyType, NoVal, TransactionID};
 
+use crate::models::{ClientID, MoneyType, NoVal, TransactionID};
 
 /// The transaction model, representing a transaction made in the
 /// system.
@@ -55,7 +55,6 @@ pub struct Dispute {
 }
 
 impl Transaction {
-
     /// Function to initialize the transaction
     pub fn builder() -> TransactionBuilder<NoVal, NoVal, NoVal> {
         Default::default()
@@ -63,12 +62,9 @@ impl Transaction {
 
     pub fn amount(&self) -> Result<MoneyType, TransactionError> {
         match self.tx_type {
-            TransactionType::Deposit { amount, .. } | TransactionType::Withdrawal { amount, .. } => {
-
-                Ok(amount.clone())
-
-            }
-            _ => Err(TransactionError::IllegalAmountCheck)
+            TransactionType::Deposit { amount, .. }
+            | TransactionType::Withdrawal { amount, .. } => Ok(amount.clone()),
+            _ => Err(TransactionError::IllegalAmountCheck),
         }
     }
 
@@ -77,11 +73,16 @@ impl Transaction {
     pub fn dispute(&mut self, dispute_tx: Transaction) -> Result<(), TransactionError> {
         if let TransactionType::Dispute = dispute_tx.tx_type() {
             if dispute_tx.transaction_id != self.transaction_id {
-                return Err(TransactionDisputeError::TransactionNotDisputingThisOne(self.transaction_id, dispute_tx.transaction_id).into());
+                return Err(TransactionDisputeError::TransactionNotDisputingThisOne(
+                    self.transaction_id,
+                    dispute_tx.transaction_id,
+                )
+                .into());
             }
 
             return match &mut self.tx_type {
-                TransactionType::Deposit { dispute, .. } | TransactionType::Withdrawal { dispute, .. } => {
+                TransactionType::Deposit { dispute, .. }
+                | TransactionType::Withdrawal { dispute, .. } => {
                     if dispute.is_some() {
                         return Err(TransactionDisputeError::TransactionAlreadyDisputed.into());
                     }
@@ -93,9 +94,7 @@ impl Transaction {
 
                     Ok(())
                 }
-                _ => {
-                    Err(TransactionDisputeError::TransactionNotDisputable.into())
-                }
+                _ => Err(TransactionDisputeError::TransactionNotDisputable.into()),
             };
         }
 
@@ -103,15 +102,25 @@ impl Transaction {
     }
 
     /// Settle the dispute ongoing in this transaction
-    pub fn settle_dispute(&mut self, dispute_settlement: Transaction) -> Result<(), TransactionError> {
+    pub fn settle_dispute(
+        &mut self,
+        dispute_settlement: Transaction,
+    ) -> Result<(), TransactionError> {
         match dispute_settlement.tx_type() {
             TransactionType::Resolve | TransactionType::Chargeback => {
                 if dispute_settlement.transaction_id != self.transaction_id {
-                    return Err(TransactionResolveDisputeError::TransactionNotResolvingThisOne(self.transaction_id, dispute_settlement.transaction_id).into());
+                    return Err(
+                        TransactionResolveDisputeError::TransactionNotResolvingThisOne(
+                            self.transaction_id,
+                            dispute_settlement.transaction_id,
+                        )
+                        .into(),
+                    );
                 }
 
                 match &mut self.tx_type {
-                    TransactionType::Deposit { dispute, .. } | TransactionType::Withdrawal { dispute, .. } => {
+                    TransactionType::Deposit { dispute, .. }
+                    | TransactionType::Withdrawal { dispute, .. } => {
                         if dispute.is_none() {
                             return Err(TransactionDisputeError::TransactionNotDisputable.into());
                         }
@@ -119,7 +128,9 @@ impl Transaction {
                         let dispute_ref = dispute.as_mut().unwrap();
 
                         if let Some(_) = dispute_ref.resolution {
-                            return Err(TransactionResolveDisputeError::DisputeAlreadyResolved.into());
+                            return Err(
+                                TransactionResolveDisputeError::DisputeAlreadyResolved.into()
+                            );
                         }
 
                         dispute_ref.resolution = Some(dispute_settlement);
@@ -129,9 +140,7 @@ impl Transaction {
                     _ => Err(TransactionDisputeError::TransactionNotDisputable.into()),
                 }
             }
-            _ => {
-                Err(TransactionResolveDisputeError::ProvidedTransactionNotResolution.into())
-            }
+            _ => Err(TransactionResolveDisputeError::ProvidedTransactionNotResolution.into()),
         }
     }
 }
@@ -171,9 +180,8 @@ pub enum TransactionError {
     #[error("Resolve dispute error {0:?}")]
     ResolveDisputeError(#[from] TransactionResolveDisputeError),
     #[error("Cannot check the amount of this transaction")]
-    IllegalAmountCheck
+    IllegalAmountCheck,
 }
-
 
 /// Implement the type state builder pattern,
 /// allowing us to assert that no malformed transactions are ever created, at compile time.
@@ -186,7 +194,10 @@ pub struct TransactionBuilder<TID, TTY, CLID> {
 }
 
 impl<TTY, CLID> TransactionBuilder<NoVal, TTY, CLID> {
-    pub fn with_tx_id(self, transaction_id: TransactionID) -> TransactionBuilder<TransactionID, TTY, CLID> {
+    pub fn with_tx_id(
+        self,
+        transaction_id: TransactionID,
+    ) -> TransactionBuilder<TransactionID, TTY, CLID> {
         TransactionBuilder {
             transaction_id,
             tx_type: self.tx_type,
@@ -196,7 +207,10 @@ impl<TTY, CLID> TransactionBuilder<NoVal, TTY, CLID> {
 }
 
 impl<TID, CLID> TransactionBuilder<TID, NoVal, CLID> {
-    pub fn with_tx_type(self, tx_type: TransactionType) -> TransactionBuilder<TID, TransactionType, CLID> {
+    pub fn with_tx_type(
+        self,
+        tx_type: TransactionType,
+    ) -> TransactionBuilder<TID, TransactionType, CLID> {
         TransactionBuilder {
             transaction_id: self.transaction_id,
             tx_type,
@@ -247,7 +261,8 @@ mod transaction_tests {
                 amount: 10000,
                 dispute: None,
             })
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         assert_eq!(transaction.transaction_id(), 1);
         assert_eq!(transaction.client(), 2);
@@ -261,12 +276,14 @@ mod transaction_tests {
                 amount: 10000,
                 dispute: None,
             })
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         let dispute_tx = Transaction::builder()
             .with_tx_id(1)
             .with_tx_type(TransactionType::Dispute)
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         assert!(transaction.dispute(dispute_tx.clone()).is_ok());
         assert!(transaction.dispute(dispute_tx).is_err());
@@ -274,7 +291,8 @@ mod transaction_tests {
         let resolved_tx = Transaction::builder()
             .with_tx_id(1)
             .with_tx_type(TransactionType::Resolve)
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         assert!(transaction.settle_dispute(resolved_tx).is_ok());
     }
@@ -287,13 +305,15 @@ mod transaction_tests {
                 amount: 10000,
                 dispute: None,
             })
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         let fake_dispute = Transaction::builder()
             //WRONG ID
             .with_tx_id(2)
             .with_tx_type(TransactionType::Dispute)
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         assert!(transaction.dispute(fake_dispute.clone()).is_err());
         assert!(transaction.settle_dispute(fake_dispute).is_err());
@@ -302,7 +322,8 @@ mod transaction_tests {
             .with_tx_id(1)
             // WRONG TYPE
             .with_tx_type(TransactionType::Resolve)
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         assert!(transaction.dispute(fake_dispute.clone()).is_err());
         assert!(transaction.settle_dispute(fake_dispute).is_err());
@@ -311,7 +332,8 @@ mod transaction_tests {
             .with_tx_id(1)
             // WRONG TYPE
             .with_tx_type(TransactionType::Chargeback)
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         assert!(transaction.dispute(fake_dispute.clone()).is_err());
         assert!(transaction.settle_dispute(fake_dispute).is_err());
@@ -325,12 +347,14 @@ mod transaction_tests {
                 amount: 10000,
                 dispute: None,
             })
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         let valid_dispute = Transaction::builder()
             .with_tx_id(1)
             .with_tx_type(TransactionType::Dispute)
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         assert!(transaction.dispute(valid_dispute.clone()).is_ok());
         assert!(transaction.dispute(valid_dispute).is_err());
@@ -339,14 +363,16 @@ mod transaction_tests {
             // WRONG ID
             .with_tx_id(2)
             .with_tx_type(TransactionType::Resolve)
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         assert!(transaction.settle_dispute(invalid_settlement).is_err());
 
         let valid_settlement = Transaction::builder()
             .with_tx_id(1)
             .with_tx_type(TransactionType::Resolve)
-            .with_client_id(2).build();
+            .with_client_id(2)
+            .build();
 
         assert!(transaction.settle_dispute(valid_settlement).is_ok());
     }

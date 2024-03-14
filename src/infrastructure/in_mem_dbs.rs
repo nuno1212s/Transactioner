@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use futures::lock::Mutex;
-use futures::{stream, StreamExt};
-use futures::stream::BoxStream;
 
-use crate::models::{ClientID, TransactionID};
+use futures::lock::Mutex;
+use futures::stream::BoxStream;
+use futures::{stream, StreamExt};
+
 use crate::models::client::Client;
 use crate::models::transactions::Transaction;
+use crate::models::{ClientID, TransactionID};
 use crate::repositories::clients::{StoredClient, TClientRepository};
 use crate::repositories::transactions::{StoredTX, TTransactionRepository};
 
@@ -38,7 +39,6 @@ impl TTransactionRepository for TransactionInMemRepository {
     }
 
     async fn store_tx(&self, tx: Transaction) -> StoredTX {
-
         let tx_id = tx.transaction_id();
 
         let stored_tx = Arc::new(Mutex::new(tx));
@@ -57,7 +57,10 @@ impl TClientRepository for ClientInMemRepository {
     async fn find_all_clients(&self) -> BoxStream<'static, StoredClient> {
         let client_guard = self.stored_clients.lock().await;
 
-        let stored_clients = client_guard.values().cloned().collect::<Vec<StoredClient>>();
+        let stored_clients = client_guard
+            .values()
+            .cloned()
+            .collect::<Vec<StoredClient>>();
 
         stream::iter(stored_clients).boxed()
     }
@@ -74,7 +77,6 @@ impl TClientRepository for ClientInMemRepository {
     }
 
     async fn store_client(&self, client: Client) -> StoredClient {
-
         let cli_id = client.client_id();
 
         let stored_client = Arc::new(Mutex::new(client));
