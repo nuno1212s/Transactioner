@@ -33,7 +33,6 @@ pub struct CSVTransactionProvider<R> {
 
 impl<R> TTransactionStreamProvider for CSVTransactionProvider<R>
     where R: Read + Send + 'static {
-
     async fn subscribe_to_tx_stream(self) -> BoxStream<'static, Transaction> {
         let (tx_sender, rx) = flume::unbounded();
 
@@ -49,22 +48,19 @@ impl<R> TTransactionStreamProvider for CSVTransactionProvider<R>
                 .from_reader(self.file);
 
             for record in csv_reader.records() {
-
                 let csv_record = record.unwrap();
 
-                let tx_builder = Transaction::builder();
+                let type_str = csv_record.get(0).unwrap();
+
+                let client_id: ClientID = csv_record.get(1).unwrap().parse().unwrap();
+
+                let tx_id: TransactionID = csv_record.get(2).unwrap().parse().unwrap();
 
                 let amount_float: f64 = csv_record.get(3).unwrap().parse().unwrap();
 
                 // Get the 4 decimal digit precision in a single integer, so we
                 // Get no funny business with the floating point arithmetic.
                 let amount = (amount_float * (10.0f64.powi(FLOATING_POINT_ACC))) as MoneyType;
-
-                let client_id: ClientID = csv_record.get(1).unwrap().parse().unwrap();
-
-                let tx_id: TransactionID = csv_record.get(2).unwrap().parse().unwrap();
-
-                let type_str = csv_record.get(0).unwrap();
 
                 let tx_type = match type_str {
                     "deposit" => {
@@ -91,7 +87,8 @@ impl<R> TTransactionStreamProvider for CSVTransactionProvider<R>
                     _ => unreachable!("Transaction type is not valid")
                 };
 
-                let tx = tx_builder.with_client_id(client_id)
+                let tx = Transaction::builder()
+                    .with_client_id(client_id)
                     .with_tx_id(tx_id)
                     .with_tx_type(tx_type)
                     .build();
@@ -105,10 +102,10 @@ impl<R> TTransactionStreamProvider for CSVTransactionProvider<R>
 }
 
 
-impl From<PathBuf> for CSVTransactionProvider<BufReader<File>> {
+impl From<PathBuf> for CSVTransactionProvider<File> {
     fn from(file: PathBuf) -> Self {
         CSVTransactionProvider {
-            file: BufReader::new(File::open(file).unwrap()),
+            file: File::open(file).unwrap(),
         }
     }
 }
