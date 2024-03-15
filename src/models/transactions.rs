@@ -359,6 +359,27 @@ mod transaction_tests {
     }
 
     #[test]
+    pub fn test_wrong_client_dispute() {
+        let mut transaction = Transaction::builder()
+            .with_tx_id(1)
+            .with_tx_type(TransactionType::Deposit {
+                amount: 10000,
+                dispute: None,
+            })
+            .with_client_id(2)
+            .build();
+
+        let invalid_dispute = Transaction::builder()
+            .with_tx_id(1)
+            .with_tx_type(TransactionType::Dispute)
+            // Wrong client ID
+            .with_client_id(3)
+            .build();
+
+        assert!(transaction.dispute(invalid_dispute).is_err());
+    }
+
+    #[test]
     pub fn test_dispute_settlement() {
         let mut transaction = Transaction::builder()
             .with_tx_id(1)
