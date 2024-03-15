@@ -9,7 +9,7 @@ Utilized Domain Driven Design for the models and separation of components.
 
 Test Driven Design to verify the correctness of certain invariants that must be maintained both at the model level and at the service level.
 
-# Correctness
+## Correctness
 
 All described cases are handled by the system.
 

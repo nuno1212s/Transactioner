@@ -2,6 +2,7 @@ use getset::{CopyGetters, Getters};
 use thiserror::Error;
 
 use crate::models::{ClientID, MoneyType, NoVal, TransactionID};
+use crate::models::client::Client;
 
 /// The transaction model, representing a transaction made in the
 /// system.
@@ -80,6 +81,14 @@ impl Transaction {
                 .into());
             }
 
+            if dispute_tx.client() != self.client() {
+                return Err(TransactionDisputeError::TransactionTargettingWrongClient(
+                    self.client(),
+                    dispute_tx.client(),
+                )
+                .into());
+            }
+
             return match &mut self.tx_type {
                 TransactionType::Deposit { dispute, .. }
                 | TransactionType::Withdrawal { dispute, .. } => {
@@ -116,6 +125,14 @@ impl Transaction {
                         )
                         .into(),
                     );
+                }
+
+                if dispute_settlement.client() != self.client() {
+                    return Err(TransactionDisputeError::TransactionTargettingWrongClient(
+                        self.client(),
+                        dispute_settlement.client(),
+                    )
+                    .into());
                 }
 
                 match &mut self.tx_type {
@@ -157,6 +174,8 @@ pub enum TransactionDisputeError {
     TransactionAlreadyDisputed,
     #[error("The transaction is not disputing the current one (Current {0:?}, Disputed {1:?})")]
     TransactionNotDisputingThisOne(TransactionID, TransactionID),
+    #[error("The dispute transaction is targetting the wrong client {0:?}, {1:?}")]
+    TransactionTargettingWrongClient(ClientID, ClientID)
 }
 
 #[derive(Error, Debug)]
